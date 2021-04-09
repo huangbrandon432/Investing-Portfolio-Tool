@@ -7,13 +7,15 @@ class StocksCrypto:
 
         self.orders = orders
         self.crypto = crypto
+
+
+    def examine_trades(self, printbuy = 'no'):
+
         self.total_gain = 0
         self.total_loss = 0
         self.trades = []
         self.losses = []
         self.gains = []
-
-    def examine_trades(self, printbuy = 'no'):
 
         trading_dict = {}
         net_gain_loss = 0
@@ -143,12 +145,14 @@ class Options:
 
     def __init__(self, option_orders):
         self.option_orders = option_orders
+
+
+    def examine_trades(self, printopening = 'yes'):
+
         self.total_optionsgain = 0
         self.total_optionsloss = 0
         self.losses = []
         self.gains = []
-
-    def examine_trades(self, printopening = 'yes'):
 
         long_trading_dict = {}
         long_symbol_strike_exp_type_list = []
