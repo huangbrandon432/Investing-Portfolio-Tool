@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+from IPython.display import Markdown
 
 
 def plot_history(ticker, start = None, end = None, ma = 'yes'):
@@ -34,13 +35,20 @@ def plot_history(ticker, start = None, end = None, ma = 'yes'):
     fig.show()
 
     start_price, end_price = frame.iloc[0]['Close'], frame.iloc[-1]['Close']
-    print("Return: {:.2f}%".format((end_price - start_price)/start_price*100))
+
+
+    def printmd(string):
+        display(Markdown(string))
+
+    printmd("Return: {:.2f}%".format((end_price - start_price)/start_price*100))
+
+
 
     try:
         ticker_info = ticker_obj.info
 
         print()
-        print('Business Summary:', ticker_info['longBusinessSummary'])
+        printmd('Business Summary: ' + ticker_info['longBusinessSummary'])
 
         market_cap = str(round(ticker_info['marketCap']/1000000000,2)) + 'B'
         longname = ticker_info['longName']
@@ -91,6 +99,6 @@ def plot_history(ticker, start = None, end = None, ma = 'yes'):
         print()
 
         display(stock_info_df)
-        
+
     except:
         pass

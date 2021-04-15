@@ -7,6 +7,7 @@ from datetime import date, timedelta
 import matplotlib.pyplot as plt
 import seaborn as sns
 import yfinance as yf
+from collections import deque
 
 
 
@@ -187,12 +188,47 @@ class StocksCrypto:
 
 
 
-    def average_hold_time(self):
+    def add_hold_time(self):
 
         symbols = {}
-        hold_times = {}
 
         for i in range(len(self.trades_df)):
+
+            side = self.trades_df.loc[i, 'Side']
+            symbol = self.trades_df.loc[i, 'Symbol']
+            date = self.trades_df.loc[i, 'Date']
+            quantity = self.trades_df.loc[i, 'Quantity']
+
+            if side == 'buy':
+                if symbol not in symbols:
+                    symbols[symbol] = deque([])
+
+                symbols[symbol].append([date, quantity])
+
+            if side == 'sell':
+                if symbol in symbols:
+
+                    quantity_before = symbols[0][1]
+
+                    symbols[0][1] -= quantity
+
+                    if symbols[0][1] > 0:
+
+                        hold_time = (pd.to_datetime(date) - pd.to_datetime(symbols[0][0])).days
+                        self.trades_df.loc[i, 'Days Held'] = hold_time
+
+                    if symbols[0][1] <= 0:
+
+                        quantity_excess = symbols[0][1]
+
+                        hold_time = (pd.to_datetime(date) - pd.to_datetime(symbols[0][0])).days
+
+                        first_in_que_weight = quantity_before/(quantity_before - symbols[0][1])
+
+                        weight_times_holdtime = first_in_que_weight * hold_time
+
+
+
 
 
 
