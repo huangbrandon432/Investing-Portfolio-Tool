@@ -1,11 +1,9 @@
 
-import sys
+
 import robin_stocks as r
 import pandas as pd
 import numpy as np
 from datetime import date, timedelta
-import matplotlib.pyplot as plt
-import seaborn as sns
 import yfinance as yf
 from collections import deque
 
@@ -121,7 +119,7 @@ class StocksCrypto:
             for i in stocks_sold:
                 try:
                     ticker = yf.Ticker(i)
-                    close = ticker.history(period = "1d").reset_index(drop=True).loc[0, 'Close']
+                    close = round(ticker.history(period = "1d").reset_index(drop=True).loc[0, 'Close'],2)
 
                     ticker_cur_price.append((i, close, 'sell'))
 
@@ -171,15 +169,15 @@ class StocksCrypto:
 
 
 
-        self.trades_df_with_price_diff['Avg Price & Curr % Price Diff'] = round((self.trades_df_with_price_diff['Current Price'] - self.trades_df_with_price_diff["Avg_Price"])/self.trades_df_with_price_diff["Avg_Price"] * 100, 2)
-        self.trades_df_with_price_diff['Avg Cost & Curr % Price Diff'] = round((self.trades_df_with_price_diff['Current Price'] - self.trades_df_with_price_diff["Cur_Avg_Cost"])/self.trades_df_with_price_diff["Cur_Avg_Cost"] * 100, 2)
+        self.trades_df_with_price_diff['Price Sold & Curr Price % Diff'] = round((self.trades_df_with_price_diff['Current Price'] - self.trades_df_with_price_diff["Avg_Price"])/self.trades_df_with_price_diff["Avg_Price"] * 100, 2)
+        self.trades_df_with_price_diff['Avg Cost & Curr Price % Diff'] = round((self.trades_df_with_price_diff['Current Price'] - self.trades_df_with_price_diff["Cur_Avg_Cost"])/self.trades_df_with_price_diff["Cur_Avg_Cost"] * 100, 2)
 
         self.trades_df_with_price_diff['Current Price'].fillna('', inplace=True)
-        self.trades_df_with_price_diff['Avg Price & Curr % Price Diff'].fillna('', inplace=True)
-        self.trades_df_with_price_diff['Avg Cost & Curr % Price Diff'].fillna('', inplace=True)
+        self.trades_df_with_price_diff['Price Sold & Curr Price % Diff'].fillna('', inplace=True)
+        self.trades_df_with_price_diff['Avg Cost & Curr Price % Diff'].fillna('', inplace=True)
 
-        self.trades_df_with_price_diff['Avg Price & Curr % Price Diff'] = self.trades_df_with_price_diff['Avg Price & Curr % Price Diff'].apply(lambda x: str(x) + '%' if x != '' else '')
-        self.trades_df_with_price_diff['Avg Cost & Curr % Price Diff'] = self.trades_df_with_price_diff['Avg Cost & Curr % Price Diff'].apply(lambda x: str(x) + '%' if x != '' else '')
+        self.trades_df_with_price_diff['Price Sold & Curr Price % Diff'] = self.trades_df_with_price_diff['Price Sold & Curr Price % Diff'].apply(lambda x: str(x) + '%' if x != '' else '')
+        self.trades_df_with_price_diff['Avg Cost & Curr Price % Diff'] = self.trades_df_with_price_diff['Avg Cost & Curr Price % Diff'].apply(lambda x: str(x) + '%' if x != '' else '')
 
 
 
@@ -190,44 +188,87 @@ class StocksCrypto:
 
     def add_hold_time(self):
 
+        self.trades_df_with_price_diff['Days Held'] = None
+
         symbols = {}
 
-        for i in range(len(self.trades_df)):
+        for i in range(len(self.trades_df_with_price_diff)):
 
-            side = self.trades_df.loc[i, 'Side']
-            symbol = self.trades_df.loc[i, 'Symbol']
-            date = self.trades_df.loc[i, 'Date']
-            quantity = self.trades_df.loc[i, 'Quantity']
+            side = self.trades_df_with_price_diff.loc[i, 'Side']
+            symbol = self.trades_df_with_price_diff.loc[i, 'Symbol']
+            date = self.trades_df_with_price_diff.loc[i, 'Date']
+            quantity = self.trades_df_with_price_diff.loc[i, 'Quantity']
 
             if side == 'buy':
                 if symbol not in symbols:
                     symbols[symbol] = deque([])
 
                 symbols[symbol].append([date, quantity])
+                print('appended ', symbol, date, quantity)
 
             if side == 'sell':
-                if symbol in symbols:
+                print(side, symbol)
+                try:
+                    print('before:', symbols[symbol])
+                except:
+                    pass
 
-                    quantity_before = symbols[0][1]
+                if symbol in symbols and len(symbols[symbol]) > 0:
 
-                    symbols[0][1] -= quantity
+                    first_in_queue_quantity = symbols[symbol][0][1]
 
-                    if symbols[0][1] > 0:
+                    symbols[symbol][0][1] -= quantity
 
-                        hold_time = (pd.to_datetime(date) - pd.to_datetime(symbols[0][0])).days
-                        self.trades_df.loc[i, 'Days Held'] = hold_time
+                    hold_time = (pd.to_datetime(date) - pd.to_datetime(symbols[symbol][0][0])).days
 
-                    if symbols[0][1] <= 0:
+                    if symbols[symbol][0][1] == 0:
 
-                        quantity_excess = symbols[0][1]
+                        self.trades_df_with_price_diff.loc[i, 'Days Held'] = hold_time
+                        symbols[symbol].popleft()
 
-                        hold_time = (pd.to_datetime(date) - pd.to_datetime(symbols[0][0])).days
+                    elif symbols[symbol][0][1] > 0:
 
-                        first_in_que_weight = quantity_before/(quantity_before - symbols[0][1])
+                        self.trades_df_with_price_diff.loc[i, 'Days Held'] = hold_time
 
-                        weight_times_holdtime = first_in_que_weight * hold_time
+                    else:
+                        first_in_queue_weight_times_holdtime = 0
+
+                        while symbols[symbol][0][1] < 0:
+
+                            #neg value
+                            quantity_excess = symbols[symbol][0][1]
+
+                            hold_time = (pd.to_datetime(date) - pd.to_datetime(symbols[symbol][0][0])).days
+
+                            first_in_que_weight = first_in_queue_quantity/quantity
+
+                            first_in_queue_weight_times_holdtime += first_in_que_weight * hold_time
+
+                            symbols[symbol].popleft()
+
+                            print(symbol, symbols[symbol])
+                            first_in_queue_quantity = symbols[symbol][0][1]
+
+                            symbols[symbol][0][1] += quantity_excess
 
 
+                        hold_time = (pd.to_datetime(date) - pd.to_datetime(symbols[symbol][0][0])).days
+
+                        if symbols[symbol][0][1] == 0:
+
+                            self.trades_df_with_price_diff.loc[i, 'Days Held'] = round(first_in_queue_weight_times_holdtime + first_in_queue_quantity/quantity * hold_time,2)
+
+                            symbols[symbol].popleft()
+
+                        elif symbols[symbol][0][1] > 0:
+
+                            self.trades_df_with_price_diff.loc[i, 'Days Held'] = round(first_in_queue_weight_times_holdtime + (first_in_queue_quantity - symbols[symbol][0][1])/quantity * hold_time,2)
+
+                try:
+                    print('after: ', symbols[symbol])
+                    print()
+                except:
+                    pass
 
 
 
