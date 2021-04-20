@@ -204,14 +204,8 @@ class StocksCrypto:
                     symbols[symbol] = deque([])
 
                 symbols[symbol].append([date, quantity])
-                print('appended ', symbol, date, quantity)
 
             if side == 'sell':
-                print(side, symbol)
-                try:
-                    print('before:', symbols[symbol])
-                except:
-                    pass
 
                 if symbol in symbols and len(symbols[symbol]) > 0:
 
@@ -246,7 +240,6 @@ class StocksCrypto:
 
                             symbols[symbol].popleft()
 
-                            print(symbol, symbols[symbol])
                             first_in_queue_quantity = symbols[symbol][0][1]
 
                             symbols[symbol][0][1] += quantity_excess
@@ -264,11 +257,6 @@ class StocksCrypto:
 
                             self.trades_df_with_price_diff.loc[i, 'Days Held'] = round(first_in_queue_weight_times_holdtime + (first_in_queue_quantity - symbols[symbol][0][1])/quantity * hold_time,2)
 
-                try:
-                    print('after: ', symbols[symbol])
-                    print()
-                except:
-                    pass
 
 
 
