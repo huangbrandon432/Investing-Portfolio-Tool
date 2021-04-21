@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from IPython.display import Markdown
 import numpy as np
+from datetime import date, timedelta
 
 
 def plot_and_get_info(ticker, start = None, end = None, ma = 'yes'):
@@ -93,12 +94,13 @@ def plot_and_get_info(ticker, start = None, end = None, ma = 'yes'):
         perc_insiders = str(round(ticker_info['heldPercentInsiders']*100,2)) + '%'
 
         stock_info = [market_cap, longname, sector, industry, country, beta, most_recent_vol, avg10d_vol, ps_trailing_12mo, forwardpe, pegratio, forwardeps, trailingeps,
-                        shares_outstanding, shares_short, shares_short_perc_outstanding, floatshares, short_perc_float, perc_institutions, perc_insiders]
+                        shares_outstanding, perc_institutions, perc_insiders, shares_short, shares_short_perc_outstanding, floatshares, short_perc_float]
 
         stock_info_df = pd.DataFrame(stock_info, index = ['Market Cap', 'Name', 'Sector', 'Industry', 'Country', 'Beta', 'Day Volume (Most recent)',
                                                             'Avg 10D Volume', 'P/S Trailing 12mo', 'Forward P/E', 'PEG Ratio', 'Forward EPS',
-                                                            'Trailing EPS', 'Shares Outstanding', 'Shares Short (Prev Mo)', 'Short % of Outstanding (Prev Mo)',
-                                                             'Shares Float', 'Short % of Float (Prev Mo)', '% Institutions', '% Insiders'], columns = ['Info'])
+                                                            'Trailing EPS', 'Shares Outstanding', 'Institutions % of Oustanding',
+                                                            'Insiders % of Oustanding', 'Shares Short (Prev Mo)', 'Short % of Outstanding (Prev Mo)',
+                                                             'Shares Float', 'Short % of Float (Prev Mo)'], columns = ['Info'])
         print()
 
         display(stock_info_df)
@@ -203,78 +205,47 @@ def compare_charts(tickers = [], start = None, end = None, ma = 'yes'):
 
 
 
+def plot_buysell_points(ticker, tradesdf):
+
+    trade_history = tradesdf[tradesdf['Symbol'] == ticker].reset_index(drop=True)
+
+    ticker_obj = yf.Ticker(ticker)
+    ticker_hist = ticker_obj.history(period = 'max')
+
+    if len(ticker_hist) == 0:
+        return
+
+    start_date = (pd.to_datetime(trade_history.loc[0, 'Date']) - timedelta(365)).strftime("%Y-%m-%d")
+    today_date = date.today().strftime("%Y-%m-%d")
+
+    frame = ticker_hist.loc[start_date:today_date]
+    closing_prices = frame['Close']
+
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x = closing_prices.index, y = closing_prices, mode = 'lines', name = 'Close'))
+
+    for i in range(len(trade_history)):
+        trade_date = trade_history.loc[i, 'Date']
+        price = trade_history.loc[i, 'Avg_Price']
+        quantity = trade_history.loc[i, 'Quantity']
+        total = trade_history.loc[i, 'Total']
+        side = trade_history.loc[i, 'Side']
+
+        if side == 'buy':
+
+            fig.add_annotation(x = trade_date, y = price, text = f'Buy', showarrow = True, arrowhead = 1,
+            ax = -0.5, ay = -35, arrowsize = 1.5, align = 'left', hovertext = f'Price: {price}, Quantity: {quantity}, Total: {total}')
+
+        if side == 'sell':
+
+            fig.add_annotation(x = trade_date, y = price, text = f'Sell', showarrow = True,
+                        arrowhead = 1, ax = -0.5, ay = -45, arrowsize = 1.5, align = 'right',
+                        hovertext = f'Price: {price}, Quantity: {quantity}, Total: {total}')
 
 
 
-    #
-    # ticker_obj1 = yf.Ticker(tickers[0])
-    # ticker_hist1 = ticker_obj1.history(period = 'max')
-    #
-    # ticker_obj2 = yf.Ticker(tickers[1])
-    # ticker_hist2 = ticker_obj2.history(period = 'max')
-    #
-    # if start and end:
-    #     start_date, end_date = start, end
-    # else:
-    #     start_date, end_date = ticker_hist1.index[0], ticker_hist1.index[-1]
-    #
-    #
-    # def normalize_data(column):
-    #
-    #     min = column.min()
-    #     max = column.max()
-    #
-    #     # time series normalization part
-    #     # y will be a column in a dataframe
-    #     y = (column - min) / (max - min)
-    #
-    #     return y
-    #
-    #
-    # frame1 = ticker_hist1.loc[start_date:end_date].copy()
-    # frame1['Norm Close'] = normalize_data(frame1['Close'])
-    # closing_prices1 = frame1['Norm Close']
-    #
-    # frame2 = ticker_hist2.loc[start_date:end_date].copy()
-    # frame2['Norm Close'] = normalize_data(frame2['Close'])
-    # closing_prices2 = frame2['Norm Close']
-    #
-    # fig = go.Figure()
-    # fig.add_trace(go.Scatter(x = closing_prices1.index, y = closing_prices1, mode = 'lines', name = str(tickers[0]) + ' Norm Close'))
-    # fig.add_trace(go.Scatter(x = closing_prices2.index, y = closing_prices2, mode = 'lines', name = str(tickers[1]) + ' Norm Close'))
-    #
-    # if ma == 'yes':
-    #     closing_prices_ma1 = frame1['Norm Close'].rolling(7).mean()
-    #     fig.add_trace(go.Scatter(x = closing_prices_ma1.index, y = closing_prices_ma1, mode = 'lines', name = str(tickers[0]) + '7D Close Moving Average'))
-    #
-    #     closing_prices_ma2 = frame2['Norm Close'].rolling(7).mean()
-    #     fig.add_trace(go.Scatter(x = closing_prices_ma2.index, y = closing_prices_ma2, mode = 'lines', name = str(tickers[1]) + '7D Close Moving Average'))
-    #
-    # fig.update_layout(title = ', '.join(tickers) + ' Comparison', yaxis_title = 'Norm Price')
-    #
-    #
-    # fig.show()
-    #
-    #
-    # start_price1, end_price1 = frame1.iloc[0]['Close'], frame1.iloc[-1]['Close']
-    #
-    # start_price2, end_price2 = frame2.iloc[0]['Close'], frame2.iloc[-1]['Close']
-    #
-    #
-    # def printmd(string):
-    #     display(Markdown(string))
-    #
-    # printmd('Given Timeframe:')
-    # printmd(str(tickers[0]) + " Return: {:.2f}%".format((end_price1 - start_price1)/start_price1*100))
-    # printmd(str(tickers[1]) + " Return: {:.2f}%".format((end_price2 - start_price2)/start_price2*100))
-    #
-    #
-    # fig2 = go.Figure()
-    # fig2.add_trace(go.Scatter(x = closing_prices1.iloc[-90:], y = closing_prices2.iloc[-90:], mode = 'markers', name = 'Norm Close'))
-    #
-    # fig2.update_layout(title = ', '.join(tickers) + ' Last 90 Days Correlation', xaxis_title = str(tickers[0]), yaxis_title = str(tickers[1]))
-    #
-    #
-    # fig2.show()
-    #
-    # print("Pearson Correlation:", round(closing_prices1.iloc[-90:].corr(closing_prices2.iloc[-90:]),3))
+    fig.update_layout(title = ticker, yaxis_title = 'Price')
+
+
+    fig.show()
