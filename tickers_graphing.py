@@ -205,9 +205,12 @@ def compare_charts(tickers = [], start = None, end = None, ma = 'yes'):
 
 
 
-def plot_buysell_points(ticker, tradesdf):
+def plot_buysell_points(ticker, tradesdf, crypto = 'no'):
 
     trade_history = tradesdf[tradesdf['Symbol'] == ticker].reset_index(drop=True)
+
+    if crypto == 'yes':
+        ticker += '-USD'
 
     ticker_obj = yf.Ticker(ticker)
     ticker_hist = ticker_obj.history(period = 'max')
@@ -215,7 +218,7 @@ def plot_buysell_points(ticker, tradesdf):
     if len(ticker_hist) == 0:
         return
 
-    start_date = (pd.to_datetime(trade_history.loc[0, 'Date']) - timedelta(365)).strftime("%Y-%m-%d")
+    start_date = (pd.to_datetime(trade_history.loc[0, 'Date']) - timedelta(150)).strftime("%Y-%m-%d")
     today_date = date.today().strftime("%Y-%m-%d")
 
     frame = ticker_hist.loc[start_date:today_date]
@@ -223,6 +226,7 @@ def plot_buysell_points(ticker, tradesdf):
 
 
     fig = go.Figure()
+
     fig.add_trace(go.Scatter(x = closing_prices.index, y = closing_prices, mode = 'lines', name = 'Close'))
 
     for i in range(len(trade_history)):
@@ -231,17 +235,20 @@ def plot_buysell_points(ticker, tradesdf):
         quantity = trade_history.loc[i, 'Quantity']
         total = trade_history.loc[i, 'Total']
         side = trade_history.loc[i, 'Side']
+        gain = trade_history.loc[i, 'Gain']
+        perc_gain = trade_history.loc[i, '% Gain']
 
         if side == 'buy':
 
-            fig.add_annotation(x = trade_date, y = price, text = f'Buy', showarrow = True, arrowhead = 1,
-            ax = -0.5, ay = -35, arrowsize = 1.5, align = 'left', hovertext = f'Price: {price}, Quantity: {quantity}, Total: {total}')
+            fig.add_annotation(x = trade_date, y = price, text = f'BB', showarrow = True, arrowhead = 1,
+                               ax = -0.5, ay = -30, arrowsize = 1.5, align = 'left',
+                               hovertext = f'B, P: {price}, Q: {quantity}, T: {total}, D: {trade_date}')
 
         if side == 'sell':
 
-            fig.add_annotation(x = trade_date, y = price, text = f'Sell', showarrow = True,
-                        arrowhead = 1, ax = -0.5, ay = -45, arrowsize = 1.5, align = 'right',
-                        hovertext = f'Price: {price}, Quantity: {quantity}, Total: {total}')
+            fig.add_annotation(x = trade_date, y = price, text = f'SS', showarrow = True, arrowhead = 1,
+                               ax = 20, ay = -30, arrowsize = 1.5, align = 'right',
+                               hovertext = f'S, P: {price}, Q: {quantity}, T: {total}, D: {trade_date}, G: {gain}, %G: {perc_gain}')
 
 
 

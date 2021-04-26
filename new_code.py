@@ -97,7 +97,7 @@ class StocksCrypto:
 
                     net_gain_loss = round(self.total_gain + self.total_loss,2)
 
-                    self.trades.append([side, symbol, date, round(quantity, 2), round(avg_price, 2), None, cur_avg_price, total, gain, str(0) + '%', net_gain_loss, 'Yes'])
+                    self.trades.append([side, symbol, date, round(quantity, 2), round(avg_price, 2), None, None, total, gain, str(0) + '%', net_gain_loss, 'Yes'])
 
 
         self.trades_df = pd.DataFrame(self.trades, columns = ['Side', 'Symbol', 'Date', 'Quantity', 'Avg_Price', 'Cur Quantity', 'Cur_Avg_Cost', 'Total', 'Gain', '% Gain', 'Net Gain/Loss', 'Free/Acquired Stock'])
