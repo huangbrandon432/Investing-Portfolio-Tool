@@ -3,6 +3,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 from IPython.display import Markdown
 import numpy as np
@@ -20,30 +21,78 @@ def plot_and_get_info(ticker, start = None, end = None, ma = 'yes'):
     else:
         start_date, end_date = ticker_hist.index[0], ticker_hist.index[-1]
 
+
     frame = ticker_hist.loc[start_date:end_date]
     closing_prices = frame['Close']
+    volume = frame['Volume']
 
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x = closing_prices.index, y = closing_prices, mode = 'lines', name = 'Close'))
+    fig = make_subplots(rows=2, cols=1,
+                    shared_xaxes=True,
+                    vertical_spacing=0.03, row_heights = [0.8, 0.2])
+
+
+    fig.add_trace(go.Scatter(x = closing_prices.index, y = closing_prices, mode = 'lines', name = 'Close'), row = 1, col = 1)
+
 
     if ma == 'yes':
         closing_prices_ma = frame['Close'].rolling(7).mean()
-        fig.add_trace(go.Scatter(x = closing_prices_ma.index, y = closing_prices_ma, mode = 'lines', name = '7D Close Moving Average'))
+        fig.add_trace(go.Scatter(x = closing_prices_ma.index, y = closing_prices_ma, mode = 'lines', name = '7D Close Moving Average'), row = 1, col = 1)
 
-    fig.update_layout(title = ticker, yaxis_title = 'Price')
+    fig.add_trace(go.Bar(x = closing_prices.index, y = volume, name = 'Volume'), row=2, col=1)
+
+    fig.update_xaxes(rangeslider_visible = True, rangeslider_thickness = 0.1, row=2, col=1)
+    fig.update_yaxes(title_text="Price", row=1, col=1)
+
+    fig.update_layout(title=ticker, height = 600,
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=7,
+                             label="1w",
+                             step="day",
+                             stepmode="backward"),
+                        dict(count=1,
+                             label="1m",
+                             step="month",
+                             stepmode="backward"),
+                        dict(count=3,
+                             label="3m",
+                             step="month",
+                             stepmode="backward"),
+                        dict(count=6,
+                             label="6m",
+                             step="month",
+                             stepmode="backward"),
+                        dict(count=1,
+                             label="YTD",
+                             step="year",
+                             stepmode="todate"),
+                        dict(count=1,
+                             label="1y",
+                             step="year",
+                             stepmode="backward"),
+                        dict(step="all")
+                    ])
+                ),
+                type="date"
+            )
+        )
 
 
     fig.show()
 
-    start_price, end_price = frame.iloc[0]['Close'], frame.iloc[-1]['Close']
 
+
+
+    start_price, end_price = frame.iloc[0]['Close'], frame.iloc[-1]['Close']
 
     def printmd(string):
         display(Markdown(string))
 
     printmd('Given Timeframe:')
     printmd("Return: {:.2f}%".format((end_price - start_price)/start_price*100))
+
 
 
 
@@ -120,7 +169,7 @@ def compare_charts(tickers = [], start = None, end = None, ma = 'yes'):
         min = column.min()
         max = column.max()
 
-        # time series normalization part
+        # time series normalization
         # y will be a column in a dataframe
         y = (column - min) / (max - min)
 
@@ -136,7 +185,7 @@ def compare_charts(tickers = [], start = None, end = None, ma = 'yes'):
 
     fig = go.Figure()
 
-    #
+
     for ticker in tickers:
 
         ticker_obj = yf.Ticker(ticker)
@@ -160,10 +209,49 @@ def compare_charts(tickers = [], start = None, end = None, ma = 'yes'):
 
         if ma == 'yes':
             closing_prices_ma = frame['Norm Close'].rolling(7).mean()
-            fig.add_trace(go.Scatter(x = closing_prices_ma.index, y = closing_prices_ma, mode = 'lines', name = i + '7D Close Moving Average'))
+            fig.add_trace(go.Scatter(x = closing_prices_ma.index, y = closing_prices_ma, mode = 'lines', name = ticker + '7D Close Moving Average'))
 
 
     fig.update_layout(title = ', '.join(tickers) + ' Comparison', yaxis_title = 'Norm Price')
+
+    fig.update_layout(height = 600,
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=7,
+                             label="1w",
+                             step="day",
+                             stepmode="backward"),
+                        dict(count=1,
+                             label="1m",
+                             step="month",
+                             stepmode="backward"),
+                        dict(count=3,
+                             label="3m",
+                             step="month",
+                             stepmode="backward"),
+                        dict(count=6,
+                             label="6m",
+                             step="month",
+                             stepmode="backward"),
+                        dict(count=1,
+                             label="YTD",
+                             step="year",
+                             stepmode="todate"),
+                        dict(count=1,
+                             label="1y",
+                             step="year",
+                             stepmode="backward"),
+                        dict(step="all")
+                    ])
+                ),
+                rangeslider=dict(
+                    visible=True, thickness = 0.1
+                ),
+                type="date"
+            )
+        )
+
     fig.show()
 
 
@@ -196,7 +284,7 @@ def compare_charts(tickers = [], start = None, end = None, ma = 'yes'):
 
         fig2.add_trace(go.Scatter(x = closing_90_days[0].loc[:, tickers[0]], y = closing_90_days[1].loc[:, tickers[1]], mode = 'markers', name = 'Norm Close'))
 
-        fig2.update_layout(title = ', '.join(tickers) + ' Last 90 Days Correlation', xaxis_title = tickers[0], yaxis_title = tickers[1], width = 1500, height = 500)
+        fig2.update_layout(title = ', '.join(tickers) + ' Last 90 Days Correlation', xaxis_title = tickers[0], yaxis_title = tickers[1], width = 1000, height = 500)
 
         fig2.show()
 
