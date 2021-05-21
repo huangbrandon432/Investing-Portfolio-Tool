@@ -11,3 +11,7 @@ Features:
 - Plot buy/sell points for each symbol traded
 - Return hold time
 - Get total gain/loss
+
+APIs used:
+- Robinhood API (robin_stocks)
+- Yahoo Finance API (yfinance)
