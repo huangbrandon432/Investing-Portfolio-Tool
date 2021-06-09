@@ -260,8 +260,6 @@ class StocksCrypto:
 
 
 
-
-
 ###Options#########################################################################################################################################
 
 class Options:
@@ -270,17 +268,18 @@ class Options:
         self.option_orders = option_orders
 
 
-    def examine_trades(self, printopening = 'yes'):
+    def examine_trades(self):
 
         self.total_optionsgain = 0
         self.total_optionsloss = 0
-        self.losses = []
-        self.gains = []
+        self.trades = []
 
         long_trading_dict = {}
         long_symbol_strike_exp_type_list = []
         short_trading_dict = {}
         short_symbol_strike_exp_type_list = []
+
+        net_gain_loss = 0
 
         for i in range(len(self.option_orders)):
 
@@ -306,7 +305,6 @@ class Options:
                     long_symbol_strike_exp_type_list.append(symb_exp_strike_type)
 
 
-
                 if symb_exp_strike_type+'_avgprice' in long_trading_dict:
                     cur_total = long_trading_dict[symb_exp_strike_type+'_quantity']*long_trading_dict[symb_exp_strike_type+'_avgprice']
                     new_total = cur_total + quantity * avg_price
@@ -319,23 +317,17 @@ class Options:
 
 
 
-                if printopening == 'yes':
+                cur_long_avg_price = round(long_trading_dict[symb_exp_strike_type+'_avgprice'],2)
+                cur_long_quantity = round(long_trading_dict[symb_exp_strike_type+'_quantity'],2)
 
-                    cur_long_avg_price = round(long_trading_dict[symb_exp_strike_type+'_avgprice'],2)
-
-                    print(f'Buy {symbol} {option_type}, {opening_strategy}, Expiration: {exp}, Strike: {strike} on {order_date}, Quantity: {quantity} contracts, Avg Price: ${avg_price}, Current Avg Cost: ${cur_long_avg_price}, Total: ${total}')
-                    print()
+                self.trades.append([side, symbol, option_type, opening_strategy, exp, strike, order_date, quantity, avg_price, cur_long_avg_price, cur_long_quantity, total, 0, str(0), '', net_gain_loss])
 
 
             elif side == 'sell' and closing_strategy in ['long_call', 'long_put']:
 
                 if symb_exp_strike_type+'_avgprice' in long_trading_dict:
 
-
                     cur_long_avg_price = round(long_trading_dict[symb_exp_strike_type+'_avgprice'],2)
-
-                    print(f'Sell {symbol} {option_type}, {closing_strategy}, Expiration: {exp}, Strike: {strike} on {order_date}, Quantity: {quantity} contracts, Avg Price: ${avg_price}, Current Avg Cost: ${cur_long_avg_price}, Total: ${total}')
-
 
                     gain = round((avg_price - cur_long_avg_price) * quantity*100,2)
                     perc_gain = round((avg_price - cur_long_avg_price)/cur_long_avg_price*100,2)
@@ -343,21 +335,18 @@ class Options:
                     if gain >= 0:
                         self.total_optionsgain += gain
 
-                        print(f'Gain: ${gain}, % Gain: {perc_gain}%')
-                        print()
-                        self.gains.append([symbol, option_type, closing_strategy, exp, strike, gain, str(perc_gain) + '%'])
-
                     else:
                         self.total_optionsloss += gain
 
-                        print(f'Gain: ${gain}, % Gain: {perc_gain}%, LOSS')
-                        print()
-                        self.losses.append([symbol, option_type, closing_strategy, exp, strike, gain, str(perc_gain) + '%'])
-
                     long_trading_dict[symb_exp_strike_type+'_quantity'] -= quantity
 
-                    #if holding = 0, pop chain_symbol avgprice and quantity
+                    net_gain_loss = round(self.total_optionsgain + self.total_optionsloss, 2)
+                    cur_long_quantity = round(long_trading_dict[symb_exp_strike_type+'_quantity'], 2)
 
+                    self.trades.append([side, symbol, option_type, closing_strategy, exp, strike, order_date, quantity, avg_price, cur_long_avg_price, cur_long_quantity, total, gain, str(perc_gain) + '%', '', net_gain_loss])
+
+
+                    #if holding = 0, pop chain_symbol avgprice and quantity
                     if long_trading_dict[symb_exp_strike_type+'_quantity'] == 0:
                         long_trading_dict.pop(symb_exp_strike_type+'_avgprice')
                         long_trading_dict.pop(symb_exp_strike_type+'_quantity')
@@ -382,13 +371,11 @@ class Options:
 
 
 
+                cur_short_avg_price = round(short_trading_dict[symb_exp_strike_type+'_avgprice'], 2)
+                cur_short_quantity = round(short_trading_dict[symb_exp_strike_type+'_quantity'], 2)
 
-                if printopening == 'yes':
+                self.trades.append([side, symbol, option_type, opening_strategy, exp, strike, order_date, quantity, avg_price, cur_short_avg_price, cur_short_quantity, total, 0, str(0), '', net_gain_loss])
 
-                    cur_short_avg_price = round(short_trading_dict[symb_exp_strike_type+'_avgprice'],2)
-
-                    print(f'Sell {symbol} {option_type}, {opening_strategy}, Expiration: {exp}, Strike: {strike} on {order_date}, Quantity: {quantity} contracts, Avg Price: ${avg_price}, Current Avg Cost: ${cur_short_avg_price}, Total: ${total}')
-                    print()
 
 
             elif side == 'buy' and closing_strategy in ['short_call', 'short_put']:
@@ -397,38 +384,27 @@ class Options:
 
                     cur_short_avg_price = round(short_trading_dict[symb_exp_strike_type+'_avgprice'],2)
 
-                    print(f'Buy {symbol} {option_type}, {closing_strategy}, Expiration: {exp}, Strike: {strike} on {order_date}, Quantity: {quantity} contracts, Avg Price: ${avg_price}, Current Avg Cost: ${cur_short_avg_price}, Total: ${total}')
-
                     gain = round((cur_short_avg_price - avg_price) * quantity * 100, 2)
                     perc_gain = round( (cur_short_avg_price - avg_price) / cur_short_avg_price * 100, 2)
 
                     if gain >= 0:
                         self.total_optionsgain += gain
-
-                        print(f'Gain: ${gain}, % Gain: {perc_gain}%')
-                        print()
-                        self.gains.append([symbol, option_type, closing_strategy, exp, strike, gain, str(perc_gain) + '%'])
-
                     else:
                         self.total_optionsloss += gain
 
-                        print(f'Gain: ${gain}, % Gain: {perc_gain}%, LOSS')
-                        print()
-                        self.losses.append([symbol, option_type, closing_strategy, exp, strike, gain, str(perc_gain) + '%'])
 
                     short_trading_dict[symb_exp_strike_type+'_quantity'] -= quantity
 
+                    net_gain_loss = round(self.total_optionsgain + self.total_optionsloss, 2)
+                    cur_short_quantity = round(short_trading_dict[symb_exp_strike_type+'_quantity'], 2)
+
+                    self.trades.append([side, symbol, option_type, closing_strategy, exp, strike, order_date, quantity, avg_price, cur_short_avg_price, cur_short_quantity, total, gain, str(perc_gain) + '%', '', net_gain_loss])
+
                     #if holding position = 0, then pop chain_symbol avgprice and chain_symbol quantity
-
                     if short_trading_dict[symb_exp_strike_type+'_quantity'] == 0:
-
                         short_trading_dict.pop(symb_exp_strike_type+'_avgprice')
                         short_trading_dict.pop(symb_exp_strike_type+'_quantity')
                         short_symbol_strike_exp_type_list.remove(symb_exp_strike_type)
-
-
-        print()
-
 
 
     #expired orders
@@ -444,52 +420,38 @@ class Options:
             closing_strategy = self.option_orders.loc[i, 'closing_strategy']
             avg_price = self.option_orders.loc[i, 'price']
 
-            total = round(avg_price * quantity * 100,2)
-
-
             symb_exp_strike_type = f'{symbol} {exp} {strike} {option_type}'
 
             if symb_exp_strike_type in long_symbol_strike_exp_type_list and opening_strategy in ['long_call', 'long_put'] and exp < date.today():
 
-                print(f'Expired: {symbol} {option_type}, {opening_strategy}, Expiration: {exp}, Strike: {strike}, Quantity: {quantity}, Avg Price: ${avg_price} Total: ${total}')
+                total = long_trading_dict[symb_exp_strike_type+'_avgprice'] * long_trading_dict[symb_exp_strike_type+'_quantity'] * 100
 
-                self.losses.append([symbol, option_type, opening_strategy, exp, strike, total*-1, '-100%'])
+                long_trading_dict.pop(symb_exp_strike_type+'_avgprice')
+                long_trading_dict.pop(symb_exp_strike_type+'_quantity')
+                long_symbol_strike_exp_type_list.remove(symb_exp_strike_type)
+
                 self.total_optionsloss -= total
+                net_gain_loss = round(self.total_optionsgain + self.total_optionsloss, 2)
 
+                self.trades.append([side, symbol, option_type, opening_strategy, exp, strike, order_date, quantity, avg_price, 0, 0, total, -total, '-100%', 'Yes', net_gain_loss])
 
             if symb_exp_strike_type in short_symbol_strike_exp_type_list and opening_strategy in ['short_call', 'short_put'] and exp < date.today():
 
-                print(f'Expired: {symbol} {option_type}, {opening_strategy}, Expiration: {exp}, Strike: {strike}, Quantity: {quantity}, Avg Price: ${avg_price} Total: ${total}')
+                total = short_trading_dict[symb_exp_strike_type+'_avgprice'] * short_trading_dict[symb_exp_strike_type+'_quantity'] * 100
 
-                self.gains.append([symbol, option_type, opening_strategy, exp, strike, total, '100%'])
+                short_trading_dict.pop(symb_exp_strike_type+'_avgprice')
+                short_trading_dict.pop(symb_exp_strike_type+'_quantity')
+                short_symbol_strike_exp_type_list.remove(symb_exp_strike_type)
+
                 self.total_optionsgain += total
+                net_gain_loss = round(self.total_optionsgain + self.total_optionsloss, 2)
+
+                self.trades.append([side, symbol, option_type, opening_strategy, exp, strike, order_date, quantity, avg_price, 0, 0, total, total, '', 'Yes', net_gain_loss])
 
 
-        print('\n')
+        self.trades_df = pd.DataFrame(self.trades, columns = ['Side', 'Symbol', 'Option Type', 'Strategy', 'Expiration', 'Strike', 'Date', 'Quantity', 'Avg_Price', 'Cur_Avg_Cost', 'Cur Quantity', 'Total', 'Gain', '% Gain', 'Expired', 'Net Gain/Loss'])
+        self.trades_df['Expiration'] = self.trades_df['Expiration'].astype(str).str.replace(' 00:00:00', '')
+        self.trades_df['Gain'] = self.trades_df['Gain'].astype('float64')
 
-
-    def get_gains_losses(self):
-
-        print()
-
-        print(f'Total Options Gain: ${self.total_optionsgain}')
-        print(f'Total Options Loss: ${self.total_optionsloss}')
-
-
-        self.gains_df = pd.DataFrame(self.gains, columns = ['Symbol', 'Option Type', 'Strategy', 'Expiration', 'Strike', 'Gain', '% Gain'])
-        self.losses_df = pd.DataFrame(self.losses, columns = ['Symbol', 'Option Type', 'Strategy', 'Expiration', 'Strike', 'Gain', '% Gain'])
-
-
-        self.gains_df['Expiration'] = self.gains_df['Expiration'].astype(str).str.replace(' 00:00:00', '')
-        self.losses_df['Expiration'] = self.losses_df['Expiration'].astype(str).str.replace(' 00:00:00', '')
-        self.gains_df['Gain'] = self.gains_df['Gain'].astype('float64')
-        self.losses_df['Gain'] = self.losses_df['Gain'].astype('float64')
-
-
-        print('\n')
-        print('Top Option Gainers:')
-        display(self.gains_df.sort_values('Gain', ascending=False).reset_index(drop=True))
-
-        print()
-        print('Top Option Losers:')
-        display(self.losses_df.sort_values('Gain').reset_index(drop=True))
+        self.gains_df = self.trades_df[(self.trades_df['Gain'] > 0)].sort_values('Gain', ascending = False).reset_index(drop=True)
+        self.losses_df = self.trades_df[(self.trades_df['Gain'] < 0)].sort_values('Gain').reset_index(drop=True)
